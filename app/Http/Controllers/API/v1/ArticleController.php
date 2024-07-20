@@ -77,4 +77,66 @@ class ArticleController extends Controller
             ], $response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    public function show($id, Request $request, Response $response)
+    {
+        $article = Article::where('id', $id)->first();
+        if ($article) {
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'data'=> [
+                    'title' => $article->title,
+                    'content' => $article->content,
+                    'publish_date' => $article->publish_date,
+                ] ,
+            ], $response::HTTP_OK);
+        }else{
+            return response()->json([
+                'status'=> Response::HTTP_NOT_FOUND,
+                'message'=> 'article not found',
+            ], $response::HTTP_NOT_FOUND);
+        }
+        
+    }
+
+    public function update($id, Request $request, Response $response)
+    {
+        $article = Article::find($id);
+        if(!$article){
+            return response()->json([
+                'error' => 'Article not found',
+               'status' => Response::HTTP_NOT_FOUND,
+            ], $response::HTTP_NOT_FOUND);
+        } else {
+            $validator = Validator::make($request->all(), [
+                'title' =>'required',
+                'content' =>'required',
+                'publish_date' =>'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json( 
+                    $validator->errors(), 
+                    $response::HTTP_BAD_REQUEST);
+            }
+
+            try {
+                $article->update([
+                    'title' => $request->title,
+                    'content' => $request->content,
+                    'publish_date' => $request->publish_date,
+                ]);
+
+                return response()->json([
+                    'data' => $article,
+                    'status' => $response::HTTP_OK,           
+                ], Response::HTTP_OK);
+            } catch (Exception $ex) {
+                return response()->json([
+                    'message' => 'Error while publishing' . $ex->getMessage(),
+                    'status' => $response::HTTP_INTERNAL_SERVER_ERROR,           
+                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+        }
+    }
 }
