@@ -10,29 +10,39 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use LDAP\Result;
 
 class ArticleController extends Controller
 {
     //
-    public function index()
+    public function index(Request $request, Response $response)
     {
         try {
-            $articles = Article::latest('publish_date')->get();
+            $query = Article::query()->latest('publish_date');
+            $keyword = $request->input('title');
+            if ($keyword) {
+                $query->where('title','like',"%{$keyword}%");
+            }
+
+            $articles = $query->paginate(2);
+
             if ($articles->isEmpty()) {
                 return response()->json([
                     'status' => Response::HTTP_NOT_FOUND,
-                    'message' => 'List of articles'
+                    'message' => 'Article empty'
                 ], Response::HTTP_NOT_FOUND);
             } else {
+                /** Jika data ada tampilkan data sesuai hasil return dari fungsi map */
                 return response()->json([
-                    'data' => $articles->map(function ($art) {
-                        return [
-                            'title' => $art->title,
-                            'content' => $art->content,
-                            'publish_date' => $art->publish_date
-                        ];
-                    }),
-                    'message' => 'List of articles',
+                    // 'data' => $articles->map(function ($article) {
+                    //     return [
+                    //         'title' => $article->title,
+                    //         'content' => $article->content,
+                    //         'publish_date' => $article->publish_date
+                    //     ];
+                    // }),
+                    'data' => $articles,
+                    'message' => 'List articles',
                     'status' => Response::HTTP_OK
                 ], Response::HTTP_OK);
             }
@@ -50,11 +60,11 @@ class ArticleController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required',
             'content' => 'required',
-            'publish_date' => 'required',//Carbon::create($request->publish_date)->toDateString(),
+            'publish_date' => 'required', //Carbon::create($request->publish_date)->toDateString(),
         ]);
 
         if ($validator->fails()) {
-            return response()->json( $validator->errors());
+            return response()->json($validator->errors());
         }
         try {
             $newAticle = Article::create([
@@ -84,40 +94,40 @@ class ArticleController extends Controller
         if ($article) {
             return response()->json([
                 'status' => Response::HTTP_OK,
-                'data'=> [
+                'data' => [
                     'title' => $article->title,
                     'content' => $article->content,
                     'publish_date' => $article->publish_date,
-                ] ,
+                ],
             ], $response::HTTP_OK);
-        }else{
+        } else {
             return response()->json([
-                'status'=> Response::HTTP_NOT_FOUND,
-                'message'=> 'article not found',
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'article not found',
             ], $response::HTTP_NOT_FOUND);
         }
-        
     }
 
     public function update($id, Request $request, Response $response)
     {
         $article = Article::find($id);
-        if(!$article){
+        if (!$article) {
             return response()->json([
                 'error' => 'Article not found',
-               'status' => Response::HTTP_NOT_FOUND,
+                'status' => Response::HTTP_NOT_FOUND,
             ], $response::HTTP_NOT_FOUND);
         } else {
             $validator = Validator::make($request->all(), [
-                'title' =>'required',
-                'content' =>'required',
-                'publish_date' =>'required',
+                'title' => 'required',
+                'content' => 'required',
+                'publish_date' => 'required',
             ]);
 
             if ($validator->fails()) {
-                return response()->json( 
-                    $validator->errors(), 
-                    $response::HTTP_BAD_REQUEST);
+                return response()->json(
+                    $validator->errors(),
+                    $response::HTTP_BAD_REQUEST
+                );
             }
 
             try {
@@ -129,14 +139,38 @@ class ArticleController extends Controller
 
                 return response()->json([
                     'data' => $article,
-                    'status' => $response::HTTP_OK,           
+                    'status' => $response::HTTP_OK,
                 ], Response::HTTP_OK);
             } catch (Exception $ex) {
                 return response()->json([
                     'message' => 'Error while publishing' . $ex->getMessage(),
-                    'status' => $response::HTTP_INTERNAL_SERVER_ERROR,           
+                    'status' => $response::HTTP_INTERNAL_SERVER_ERROR,
                 ], Response::HTTP_INTERNAL_SERVER_ERROR);
             }
+        }
+    }
+    public function destroy($id, Request $request, Response $response)
+    {
+        $article = Article::find($id);
+        if (!$article) {
+            return response()->json([
+                'error' => 'Article not found',
+                'status' => Response::HTTP_NOT_FOUND,
+            ], $response::HTTP_NOT_FOUND);
+        }
+        try {
+            //code...
+            $article->delete();
+            return response()->json([
+                'status' => $response::HTTP_OK,
+                'data' => $article,
+                'message' => 'Delete article successfully'
+            ], $response::HTTP_OK);
+        } catch (Exception $ex) {
+            return response()->json([
+                'message' => 'Error while deleting' . $ex->getMessage(),
+                'status' => $response::HTTP_INTERNAL_SERVER_ERROR,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }
