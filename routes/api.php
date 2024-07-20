@@ -19,6 +19,17 @@ use App\Http\Controllers\API\v2\ArticleController as ArticleController2;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+Route::middleware('auth:sanctum')->group(function(){
+    Route::get('/user',function(Request $request){
+        return $request->user();
+    });
+
+    Route::post('logout',[\App\Http\Controllers\API\Auth\AuthController::class,'logout']);
+
+});
+Route::post('register',[\App\Http\Controllers\API\Auth\AuthController::class,'register']);
+Route::post('login',[\App\Http\Controllers\API\Auth\AuthController::class,'login']);
+
 Route::prefix('v1')->group(function(){
     Route::get('articles', [ArticleController::class, 'index']);
     Route::post('articles', [ArticleController::class, 'store']);
